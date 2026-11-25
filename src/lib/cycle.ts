@@ -1,6 +1,7 @@
 import { addDays, diffDays, type ISODate } from './dates'
 
-export interface PeriodEntry { id: string; start: ISODate; end?: ISODate }
+/** updatedAt (ms since epoch) is used only to merge changes between synced devices. */
+export interface PeriodEntry { id: string; start: ISODate; end?: ISODate; updatedAt?: number }
 
 export interface Settings {
   defaultCycleLength: number

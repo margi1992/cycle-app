@@ -3,11 +3,38 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "description": "Cycle - a private, personal cycle calendar",
+  "author": "Cycle",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "desktop": "npm run build && electron .",
+    "desktop:pack": "npm run build && electron-builder --win portable --x64"
+  },
+  "build": {
+    "appId": "local.cycle.app",
+    "productName": "Cycle",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "public/icon-512.png",
+      "package.json"
+    ],
+    "win": {
+      "icon": "public/icon-512.png",
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "Cycle.exe"
+    }
   },
   "dependencies": {
     "idb-keyval": "^6.3.0",
@@ -18,9 +45,12 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.1",
+    "wrangler": "^4.168.0"
   }
 }

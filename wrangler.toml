@@ -1,0 +1,8 @@
+name = "cycle-sync"
+main = "worker/index.js"
+compatibility_date = "2025-01-01"
+
+# Filled in by `npx wrangler kv namespace create VAULT`
+[[kv_namespaces]]
+binding = "VAULT"
+id = "0678b8f0682944f4b377200e831962a0"

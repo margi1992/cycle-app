@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from './lib/store'
+import { useSync } from './lib/useSync'
 import { todayISO } from './lib/dates'
 import { reminderDue, reminderText, showNotification } from './lib/reminders'
 import Home from './screens/Home'
@@ -17,6 +18,7 @@ export default function App() {
   const store = useStore()
   const [tab, setTab] = useState<Tab>('home')
   const { data } = store
+  const sync = useSync(store, data)
 
   const due = data ? reminderDue(data.entries, data.settings, todayISO()) : null
 
@@ -46,7 +48,7 @@ export default function App() {
         )}
         {tab === 'home' && <Home data={data} store={store} />}
         {tab === 'history' && <History data={data} store={store} />}
-        {tab === 'settings' && <Settings data={data} store={store} />}
+        {tab === 'settings' && <Settings data={data} store={store} sync={sync} />}
       </main>
     </div>
   )

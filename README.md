@@ -23,3 +23,10 @@ A web app cannot wake your phone while closed without a server that would learn 
 
 ## Data
 Settings → Export (JSON) and Delete all. Clearing browser data removes your records, so export occasionally. No sync between devices in v1.
+
+## Desktop app (Windows)
+```
+npm run desktop        # build and open in an Electron window
+npm run desktop:pack   # creates release/Cycle.exe (portable, no installer)
+```
+The desktop app is the same web app in its own window. Its data is stored in `%APPDATA%\Cycle` and is separate from the website's data (export from one, then re-add or keep using one). Unsigned, so Windows SmartScreen may warn on first launch: More info → Run anyway.

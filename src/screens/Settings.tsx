@@ -3,6 +3,9 @@ import { averageDuration, type Settings as S } from '../lib/cycle'
 import { todayISO } from '../lib/dates'
 import { buildIcs, enableNotifications, reminderText, showNotification } from '../lib/reminders'
 import type { AppData, Store } from '../lib/store'
+import type { SyncApi } from '../lib/useSync'
+import { DEFAULT_SYNC_URL } from '../lib/sync'
+import { MIN_PASSPHRASE } from '../lib/crypto'
 
 function download(name: string, blob: Blob) {
   const url = URL.createObjectURL(blob)
@@ -15,9 +18,29 @@ function download(name: string, blob: Blob) {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(v) || lo))
 
-export default function Settings({ data, store }: { data: AppData; store: Store }) {
+export default function Settings({ data, store, sync }: { data: AppData; store: Store; sync: SyncApi }) {
   const s = data.settings
   const [note, setNote] = useState('')
+  const [url, setUrl] = useState(DEFAULT_SYNC_URL)
+  const [pass, setPass] = useState('')
+  const [pass2, setPass2] = useState('')
+  const [syncNote, setSyncNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const connect = async () => {
+    setSyncNote('')
+    if (!/^https:\/\//.test(url.trim())) return setSyncNote('Enter the sync server address (starts with https://).')
+    if (pass.length < MIN_PASSPHRASE) return setSyncNote(`Use a passphrase of at least ${MIN_PASSPHRASE} characters.`)
+    if (pass !== pass2) return setSyncNote('The two passphrases don’t match.')
+    setBusy(true)
+    const r = await sync.connect(url, pass)
+    setBusy(false)
+    if (!r.ok) return setSyncNote('Could not connect — check the address and your internet connection.')
+    setPass(''); setPass2('')
+    setSyncNote(r.hadRemote
+      ? `Connected. Found your cloud data and merged it — ${r.periods} period${r.periods === 1 ? '' : 's'} in total.`
+      : 'Connected. Nothing was in the cloud yet, so your data here was uploaded. On your other devices, enter the exact same passphrase.')
+  }
   const [confirmText, setConfirmText] = useState('')
   const perm = 'Notification' in window ? Notification.permission : 'unsupported'
   const dur = averageDuration(data.entries, s)
@@ -91,8 +114,36 @@ export default function Settings({ data, store }: { data: AppData; store: Store 
       </section>
 
       <section className="card">
+        <h2>Sync between devices</h2>
+        {sync.config ? (
+          <>
+            <p className="small">
+              <b>{sync.state === 'syncing' ? 'Syncing…' : sync.state === 'error' ? 'Not synced' : 'In sync'}</b>
+              {sync.config.lastSynced ? ` · last ${new Date(sync.config.lastSynced).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+            </p>
+            {sync.error && <p className="error" role="alert">{sync.error}</p>}
+            <button className="btn ghost wide" onClick={() => void sync.syncNow()}>Sync now</button>
+            <button className="btn ghost wide" onClick={() => { if (confirm('Stop syncing on this device? Your data stays here and in the cloud.')) void sync.disconnect() }}>Disconnect this device</button>
+            <button className="btn danger wide" onClick={() => { if (confirm('Delete the encrypted cloud copy and stop syncing? Other devices keep their own data.')) void sync.removeCloudCopy() }}>Delete cloud copy</button>
+          </>
+        ) : (
+          <>
+            <p className="muted small">
+              Your data is encrypted on this device with a passphrase before it is uploaded, so the server only stores unreadable text.
+              Use the <b>same passphrase on every device</b>. It can’t be recovered if you forget it.
+            </p>
+            <input className="text" type="url" placeholder="Sync server address (https://…)" value={url} onChange={(e) => setUrl(e.target.value)} aria-label="Sync server address" />
+            <input className="text" type="password" autoComplete="new-password" placeholder="Passphrase (12+ characters)" value={pass} onChange={(e) => setPass(e.target.value)} aria-label="Passphrase" />
+            <input className="text" type="password" autoComplete="new-password" placeholder="Repeat passphrase" value={pass2} onChange={(e) => setPass2(e.target.value)} aria-label="Repeat passphrase" />
+            <button className="btn primary wide" disabled={busy} onClick={() => void connect()}>{busy ? 'Connecting…' : 'Connect and sync'}</button>
+          </>
+        )}
+        {syncNote && <p className="note" role="status">{syncNote}</p>}
+      </section>
+
+      <section className="card">
         <h2>Your data</h2>
-        <p className="muted small">Stored only in this browser on this device. Nothing is uploaded and there is no analytics.
+        <p className="muted small">Stored on this device. Nothing is uploaded unless you turn on encrypted sync above, and there is no analytics.
           Clearing browser data or uninstalling will remove it, so export a backup now and then.</p>
         <button className="btn ghost wide" onClick={() => download(`cycle-export-${todayISO()}.json`, store.exportJson())}>
           Export my data (JSON)
@@ -102,7 +153,7 @@ export default function Settings({ data, store }: { data: AppData; store: Store 
           <p className="small">This permanently removes all periods and settings from this device. Type <b>delete</b> to confirm.</p>
           <input className="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} aria-label="Type delete to confirm" />
           <button className="btn danger wide" disabled={confirmText.trim().toLowerCase() !== 'delete'}
-            onClick={async () => { await store.deleteAll(); setConfirmText(''); setNote('All data deleted.') }}>
+            onClick={async () => { await store.deleteAll(!!sync.config); setConfirmText(''); setNote('All data deleted.') }}>
             Delete everything
           </button>
         </details>
